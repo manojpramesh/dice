@@ -12,6 +12,8 @@ GOARCH ?= $(shell go env GOARCH)
 
 VERSION=$(shell bash -c 'grep -oP "DiceDBVersion string = \"\K[^\"]+" config/config.go')
 
+DSQL_GRAMMAR=internal/sql/parser/dsql.g4
+
 .PHONY: build test build-docker run test-one
 
 .DEFAULT_GOAL := help
@@ -97,3 +99,12 @@ clean: ## clean the dicedb binary
 	@echo "Cleaning build artifacts..."
 	rm -f dicedb
 	@echo "Clean complete."
+
+dsql-generate:
+	@if ! command -v antlr4 &> /dev/null; then \
+		echo "ANTLR4 is not installed. Install it by following the guide here:"; \
+		echo "https://github.com/antlr/antlr4/blob/master/doc/getting-started.md"; \
+		exit 1; \
+	else \
+		antlr4 -Dlanguage=Go $(DSQL_GRAMMAR); \
+	fi

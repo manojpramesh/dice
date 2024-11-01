@@ -435,7 +435,7 @@ func EvalQWATCH(args []string, httpOp, websocketOp bool, client *comm.Client, st
 	if httpOp || websocketOp {
 		watchSubscription = querymanager.QuerySubscription{
 			Subscribe:          true,
-			Query:              query,
+			Query:              *query,
 			CacheChan:          cacheChannel,
 			QwatchClientChan:   client.HTTPQwatchResponseChan,
 			ClientIdentifierID: client.ClientIdentifierID,
@@ -443,7 +443,7 @@ func EvalQWATCH(args []string, httpOp, websocketOp bool, client *comm.Client, st
 	} else {
 		watchSubscription = querymanager.QuerySubscription{
 			Subscribe: true,
-			Query:     query,
+			Query:     *query,
 			ClientFD:  client.Fd,
 			CacheChan: cacheChannel,
 		}
@@ -455,7 +455,7 @@ func EvalQWATCH(args []string, httpOp, websocketOp bool, client *comm.Client, st
 	// Return the result of the query.
 	responseChan := make(chan querymanager.AdhocQueryResult)
 	querymanager.AdhocQueryChan <- querymanager.AdhocQuery{
-		Query:        query,
+		Query:        *query,
 		ResponseChan: responseChan,
 	}
 
@@ -481,14 +481,14 @@ func EvalQUNWATCH(args []string, httpOp bool, client *comm.Client) []byte {
 	if httpOp {
 		querymanager.QuerySubscriptionChan <- querymanager.QuerySubscription{
 			Subscribe:          false,
-			Query:              query,
+			Query:              *query,
 			QwatchClientChan:   client.HTTPQwatchResponseChan,
 			ClientIdentifierID: client.ClientIdentifierID,
 		}
 	} else {
 		querymanager.QuerySubscriptionChan <- querymanager.QuerySubscription{
 			Subscribe: false,
-			Query:     query,
+			Query:     *query,
 			ClientFD:  client.Fd,
 		}
 	}
