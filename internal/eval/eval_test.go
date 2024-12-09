@@ -132,6 +132,7 @@ func TestEval(t *testing.T) {
 	testEvalBitFieldRO(t, store)
 	testEvalGEOADD(t, store)
 	testEvalGEODIST(t, store)
+	testEvalGEOHASH(t, store)
 	testEvalSINTER(t, store)
 	testEvalJSONSTRAPPEND(t, store)
 	testEvalINCR(t, store)
@@ -8108,7 +8109,7 @@ func testEvalDUMP(t *testing.T, store *dstore.Store) {
 			input: []string{"INTEGER_KEY"},
 			migratedOutput: EvalResponse{
 				Result: "CQUAAAAAAAAACv9+l81XgsShqw==",
-				Error: nil,
+				Error:  nil,
 			},
 		},
 		"dump expired key": {
@@ -8324,6 +8325,68 @@ func testEvalGEODIST(t *testing.T, store *dstore.Store) {
 	}
 
 	runMigratedEvalTests(t, tests, evalGEODIST, store)
+}
+
+func testEvalGEOHASH(t *testing.T, store *dstore.Store) {
+	tests := map[string]evalTestCase{
+		"GEOHASH with wrong number of arguments": {
+			input: []string{"mygeo"},
+			migratedOutput: EvalResponse{
+				Result: nil,
+				Error:  diceerrors.ErrWrongArgumentCount("GEOHASH"),
+			},
+		},
+		"GEOHASH with non-existent key": {
+			input: []string{"nonexistent", "member1"},
+			migratedOutput: EvalResponse{
+				Result: nil,
+				Error:  diceerrors.ErrKeyNotFound,
+			},
+		},
+		"GEOHASH with existing key but missing member": {
+			setup: func() {
+				evalGEOADD([]string{"mygeo", "-74.0060", "40.7128", "NewYork"}, store)
+			},
+			input: []string{"mygeo", "missingMember"},
+			migratedOutput: EvalResponse{
+				Result: map[string]string{"missingMember": "nil"},
+				Error:  nil,
+			},
+		},
+		"GEOHASH for single member": {
+			setup: func() {
+				evalGEOADD([]string{"mygeo", "-74.0060", "40.7128", "NewYork"}, store)
+			},
+			input: []string{"mygeo", "NewYork"},
+			migratedOutput: EvalResponse{
+				Result: map[string]string{"NewYork": "dr5regw3pp0"},
+				Error:  nil,
+			},
+		},
+		"GEOHASH for multiple members": {
+			setup: func() {
+				evalGEOADD([]string{"mygeo", "-74.0060", "40.7128", "NewYork"}, store)
+				evalGEOADD([]string{"mygeo", "-118.2437", "34.0522", "LosAngeles"}, store)
+			},
+			input: []string{"mygeo", "NewYork", "LosAngeles"},
+			migratedOutput: EvalResponse{
+				Result: map[string]string{"LosAngeles": "9q5ctr186n0", "NewYork": "dr5regw3pp0"},
+				Error:  nil,
+			},
+		},
+		"GEOHASH with a key of wrong type": {
+			setup: func() {
+				store.Put("mygeo", store.NewObj("string_value", -1, object.ObjTypeString))
+			},
+			input: []string{"mygeo", "member1"},
+			migratedOutput: EvalResponse{
+				Result: nil,
+				Error:  diceerrors.ErrWrongTypeOperation,
+			},
+		},
+	}
+
+	runMigratedEvalTests(t, tests, evalGEOHASH, store)
 }
 
 func testEvalSINTER(t *testing.T, store *dstore.Store) {

@@ -6137,7 +6137,7 @@ func evalGEOADD(args []string, store *dstore.Store) *EvalResponse {
 			continue
 		}
 
-		hash := geo.EncodeHash(latitude, longitude)
+		hash := geo.EncodeInt(latitude, longitude)
 
 		wasInserted := ss.Upsert(hash, member)
 		if wasInserted {
@@ -6202,8 +6202,8 @@ func evalGEODIST(args []string, store *dstore.Store) *EvalResponse {
 		}
 	}
 
-	lat1, lon1 := geo.DecodeHash(score1)
-	lat2, lon2 := geo.DecodeHash(score2)
+	lat1, lon1 := geo.DecodeInt(score1)
+	lat2, lon2 := geo.DecodeInt(score2)
 
 	distance := geo.GetDistance(lon1, lat1, lon2, lat2)
 
@@ -6218,6 +6218,53 @@ func evalGEODIST(args []string, store *dstore.Store) *EvalResponse {
 
 	return &EvalResponse{
 		Result: utils.RoundToDecimals(result, 4),
+		Error:  nil,
+	}
+}
+
+func evalGEOHASH(args []string, store *dstore.Store) *EvalResponse {
+	if len(args) < 2 {
+		return &EvalResponse{
+			Result: nil,
+			Error:  diceerrors.ErrWrongArgumentCount("GEOHASH"),
+		}
+	}
+
+	key := args[0]
+	members := args[1:]
+
+	obj := store.Get(key)
+	if obj == nil {
+		return &EvalResponse{
+			Result: nil,
+			Error:  diceerrors.ErrKeyNotFound,
+		}
+	}
+
+	ss, err := sortedset.FromObject(obj)
+	if err != nil {
+		return &EvalResponse{
+			Result: nil,
+			Error:  diceerrors.ErrWrongTypeOperation,
+		}
+	}
+
+	// Prepare the response for each member
+	result := make(map[string]string)
+	for _, member := range members {
+		entry, exists := ss.Get(member)
+		if !exists {
+			result[member] = "nil"
+			continue
+		}
+
+		// Convert the score back to the geohash string
+		result[member] = geo.EncodeHash(uint64(entry))
+	}
+
+	// Return the resulting map
+	return &EvalResponse{
+		Result: result,
 		Error:  nil,
 	}
 }
