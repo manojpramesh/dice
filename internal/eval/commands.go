@@ -1213,6 +1213,14 @@ var (
 		NewEval:    evalGEODIST,
 		KeySpecs:   KeySpecs{BeginIndex: 1},
 	}
+	geoHashCmdMeta = DiceCmdMeta{
+		Name:       "GEOHASH",
+		Info:       `Return Geohash strings representing the position of one or more elements representing a geospatial index`,
+		Arity:      -2,
+		IsMigrated: true,
+		NewEval:    evalGEOHASH,
+		KeySpecs:   KeySpecs{BeginIndex: 1},
+	}
 	jsonstrappendCmdMeta = DiceCmdMeta{
 		Name: "JSON.STRAPPEND",
 		Info: `JSON.STRAPPEND key [path] value
@@ -1354,6 +1362,7 @@ func init() {
 	DiceCmds["FLUSHDB"] = flushdbCmdMeta
 	DiceCmds["GEOADD"] = geoAddCmdMeta
 	DiceCmds["GEODIST"] = geoDistCmdMeta
+	DiceCmds["GEOHASH"] = geoHashCmdMeta
 	DiceCmds["GET"] = getCmdMeta
 	DiceCmds["GETBIT"] = getBitCmdMeta
 	DiceCmds["GETDEL"] = getDelCmdMeta

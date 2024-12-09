@@ -130,6 +130,7 @@ func TestEval(t *testing.T) {
 	testEvalBitFieldRO(t, store)
 	testEvalGEOADD(t, store)
 	testEvalGEODIST(t, store)
+	testEvalGEOHASH(t, store)
 	testEvalJSONSTRAPPEND(t, store)
 	testEvalINCR(t, store)
 	testEvalINCRBY(t, store)
@@ -8245,6 +8246,118 @@ func testEvalGEODIST(t *testing.T, store *dstore.Store) {
 	}
 
 	runMigratedEvalTests(t, tests, evalGEODIST, store)
+}
+
+func testEvalGEOHASH(t *testing.T, store *dstore.Store) {
+	tests := map[string]evalTestCase{
+		"GEOHASH with wrong number of arguments": {
+			input: []string{"mygeo"},
+			migratedOutput: EvalResponse{
+				Result: nil,
+				Error:  diceerrors.ErrWrongArgumentCount("GEOHASH"),
+			},
+		},
+		"GEOHASH with non-existent key": {
+			input: []string{"nonexistent", "member1"},
+			migratedOutput: EvalResponse{
+				Result: nil,
+				Error:  diceerrors.ErrKeyNotFound,
+			},
+		},
+		"GEOHASH with existing key but missing member": {
+			setup: func() {
+				evalGEOADD([]string{"mygeo", "-74.0060", "40.7128", "NewYork"}, store)
+			},
+			input: []string{"mygeo", "missingMember"},
+			migratedOutput: EvalResponse{
+				Result: map[string]string{"missingMember": "nil"},
+				Error:  nil,
+			},
+		},
+		"GEOHASH for single member": {
+			setup: func() {
+				evalGEOADD([]string{"mygeo", "-74.0060", "40.7128", "NewYork"}, store)
+			},
+			input: []string{"mygeo", "NewYork"},
+			migratedOutput: EvalResponse{
+				Result: map[string]string{"NewYork": "dr5regw3pp0"},
+				Error:  nil,
+			},
+		},
+		"GEOHASH for multiple members": {
+			setup: func() {
+				evalGEOADD([]string{"mygeo", "-74.0060", "40.7128", "NewYork"}, store)
+				evalGEOADD([]string{"mygeo", "-118.2437", "34.0522", "LosAngeles"}, store)
+			},
+			input: []string{"mygeo", "NewYork", "LosAngeles"},
+			migratedOutput: EvalResponse{
+				Result: map[string]string{"LosAngeles": "9q5ctr186n0", "NewYork": "dr5regw3pp0"},
+				Error:  nil,
+			},
+		},
+		"GEOHASH with a key of wrong type": {
+			setup: func() {
+				store.Put("mygeo", store.NewObj("string_value", -1, object.ObjTypeString))
+			},
+			input: []string{"mygeo", "member1"},
+			migratedOutput: EvalResponse{
+				Result: nil,
+				Error:  diceerrors.ErrWrongTypeOperation,
+			},
+		},
+	}
+
+	runMigratedEvalTests(t, tests, evalGEOHASH, store)
+}
+
+func testEvalSINTER(t *testing.T, store *dstore.Store) {
+	tests := map[string]evalTestCase{
+		"intersection of two sets": {
+			setup: func() {
+				evalSADD([]string{"set1", "a", "b", "c"}, store)
+				evalSADD([]string{"set2", "c", "d", "e"}, store)
+			},
+			input:  []string{"set1", "set2"},
+			output: clientio.Encode([]string{"c"}, false),
+		},
+		"intersection of three sets": {
+			setup: func() {
+				evalSADD([]string{"set1", "a", "b", "c"}, store)
+				evalSADD([]string{"set2", "b", "c", "d"}, store)
+				evalSADD([]string{"set3", "c", "d", "e"}, store)
+			},
+			input:  []string{"set1", "set2", "set3"},
+			output: clientio.Encode([]string{"c"}, false),
+		},
+		"intersection with single set": {
+			setup: func() {
+				evalSADD([]string{"set1", "a"}, store)
+			},
+			input:  []string{"set1"},
+			output: clientio.Encode([]string{"a"}, false),
+		},
+		"intersection with a non-existent key": {
+			setup: func() {
+				evalSADD([]string{"set1", "a", "b", "c"}, store)
+			},
+			input:  []string{"set1", "nonexistent"},
+			output: clientio.Encode([]string{}, false),
+		},
+		"intersection with wrong type": {
+			setup: func() {
+				evalSADD([]string{"set1", "a", "b", "c"}, store)
+				store.Put("string", &object.Obj{Value: "string", Type: object.ObjTypeString})
+			},
+			input:  []string{"set1", "string"},
+			output: []byte("-WRONGTYPE Operation against a key holding the wrong kind of value\r\n"),
+		},
+		"no arguments": {
+			input:  []string{},
+			output: diceerrors.NewErrArity("SINTER"),
+		},
+	}
+
+	runEvalTests(t, tests, evalSINTER, store)
 }
 
 func testEvalJSONSTRAPPEND(t *testing.T, store *dstore.Store) {
