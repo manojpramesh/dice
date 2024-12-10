@@ -6258,11 +6258,10 @@ func evalGEOHASH(args []string, store *dstore.Store) *EvalResponse {
 			continue
 		}
 
-		// Convert the score back to the geohash string
-		result[member] = geo.EncodeHash(uint64(entry))
+		lat, lon := geo.DecodeInt(entry)
+		result[member] = geo.EncodeString(lat, lon)
 	}
 
-	// Return the resulting map
 	return &EvalResponse{
 		Result: result,
 		Error:  nil,

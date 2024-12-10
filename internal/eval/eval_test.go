@@ -8280,7 +8280,7 @@ func testEvalGEOHASH(t *testing.T, store *dstore.Store) {
 			},
 			input: []string{"mygeo", "NewYork"},
 			migratedOutput: EvalResponse{
-				Result: map[string]string{"NewYork": "dr5regw3pp0"},
+				Result: map[string]string{"NewYork": "dr5regw3pp"},
 				Error:  nil,
 			},
 		},
@@ -8291,7 +8291,7 @@ func testEvalGEOHASH(t *testing.T, store *dstore.Store) {
 			},
 			input: []string{"mygeo", "NewYork", "LosAngeles"},
 			migratedOutput: EvalResponse{
-				Result: map[string]string{"LosAngeles": "9q5ctr186n0", "NewYork": "dr5regw3pp0"},
+				Result: map[string]string{"LosAngeles": "9q5ctr186n", "NewYork": "dr5regw3pp"},
 				Error:  nil,
 			},
 		},
