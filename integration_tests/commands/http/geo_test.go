@@ -84,3 +84,76 @@ func TestGeoDist(t *testing.T) {
 		})
 	}
 }
+
+func TestGeoHash(t *testing.T) {
+	exec := NewHTTPCommandExecutor()
+
+	testCases := []struct {
+		name     string
+		commands []HTTPCommand
+		expected []interface{}
+	}{
+		{
+			name: "GEOHASH with wrong number of arguments",
+			commands: []HTTPCommand{
+				{Command: "GEOHASH", Body: map[string]interface{}{"key": "points"}},
+			},
+			expected: []interface{}{"ERR wrong number of arguments for 'geohash' command"},
+		},
+		{
+			name: "GEOHASH with non-existent key",
+			commands: []HTTPCommand{
+				{Command: "GEOHASH", Body: map[string]interface{}{"key": "nonexistent", "values": []interface{}{"Member1"}}},
+			},
+			expected: []interface{}{"ERR no such key"},
+		},
+		{
+			name: "GEOHASH with existing key but missing member",
+			commands: []HTTPCommand{
+				{Command: "GEOADD", Body: map[string]interface{}{"key": "points", "values": []interface{}{"13.361389", "38.115556", "Palermo"}}},
+				{Command: "GEOHASH", Body: map[string]interface{}{"key": "points", "values": []interface{}{"NonExistentMember"}}},
+			},
+			expected: []interface{}{float64(1), map[string]interface{}{"NonExistentMember": "nil"}},
+		},
+		{
+			name: "GEOHASH with a key of wrong type",
+			commands: []HTTPCommand{
+				{Command: "SET", Body: map[string]interface{}{"key": "notgeo", "value": "value"}},
+				{Command: "GEOHASH", Body: map[string]interface{}{"key": "notgeo", "values": []interface{}{"Member"}}},
+			},
+			expected: []interface{}{"OK", "WRONGTYPE Operation against a key holding the wrong kind of value"},
+		},
+		{
+			name: "GEOHASH with a single member",
+			commands: []HTTPCommand{
+				{Command: "GEOADD", Body: map[string]interface{}{"key": "points", "values": []interface{}{"-74.0060", "40.7128", "NewYork"}}},
+				{Command: "GEOHASH", Body: map[string]interface{}{"key": "points", "values": []interface{}{"NewYork"}}},
+			},
+			expected: []interface{}{float64(1), map[string]interface{}{"NewYork": "dr5regw3pp"}},
+		},
+		{
+			name: "GEOHASH with multiple members",
+			commands: []HTTPCommand{
+				{Command: "GEOADD", Body: map[string]interface{}{"key": "points", "values": []interface{}{"-73.935242", "40.730610", "Brooklyn"}}},
+				{Command: "GEOHASH", Body: map[string]interface{}{"key": "points", "values": []interface{}{"NewYork", "Brooklyn"}}},
+			},
+			expected: []interface{}{float64(1), map[string]interface{}{"Brooklyn": "dr5rtwccpb", "NewYork": "dr5regw3pp"}},
+		},
+		{
+			name: "GEOHASH with a non-existent member",
+			commands: []HTTPCommand{
+				{Command: "GEOHASH", Body: map[string]interface{}{"key": "points", "values": []interface{}{"NonExistent"}}},
+			},
+			expected: []interface{}{map[string]interface{}{"NonExistent": "nil"}},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			for i, cmd := range tc.commands {
+				result, _ := exec.FireCommand(cmd)
+				assert.Equal(t, tc.expected[i], result, "Value mismatch for cmd %s", cmd)
+			}
+		})
+	}
+}

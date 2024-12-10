@@ -84,3 +84,63 @@ func TestGeoDist(t *testing.T) {
 		})
 	}
 }
+
+func TestGeoHash(t *testing.T) {
+	conn := getLocalConnection()
+	defer conn.Close()
+
+	testCases := []struct {
+		name   string
+		cmds   []string
+		expect []interface{}
+		delays []time.Duration
+	}{
+		{
+			name: "GEOHASH with no arguments",
+			cmds: []string{
+				"GEOHASH points",
+			},
+			expect: []interface{}{"ERR wrong number of arguments for 'geohash' command"},
+		},
+		{
+			name: "GEOHASH on non-geo key",
+			cmds: []string{
+				"SET key value",
+				"GEOHASH key member",
+			},
+			expect: []interface{}{"OK", "WRONGTYPE Operation against a key holding the wrong kind of value"},
+		},
+		// {
+		// 	name: "GEOHASH with a single member",
+		// 	cmds: []string{
+		// 		"GEOADD points -74.0060 40.7128 NewYork",
+		// 		"GEOHASH points NewYork",
+		// 	},
+		// 	expect: []interface{}{int64(1), "dr5regw3pg7"},
+		// },
+		// {
+		// 	name: "GEOHASH with multiple members",
+		// 	cmds: []string{
+		// 		"GEOADD points -73.935242 40.730610 Brooklyn",
+		// 		"GEOHASH points NewYork Brooklyn",
+		// 	},
+		// 	expect: []interface{}{int64(1), []interface{}{"dr5regw3pg7", "dr5ru7qk3e9"}},
+		// },
+		{
+			name: "GEOHASH with non-existent member",
+			cmds: []string{
+				"GEOHASH points NonExistent",
+			},
+			expect: []interface{}{"ERR no such key"},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			for i, cmd := range tc.cmds {
+				result := FireCommand(conn, cmd)
+				assert.Equal(t, tc.expect[i], result, "Value mismatch for cmd %s", cmd)
+			}
+		})
+	}
+}
